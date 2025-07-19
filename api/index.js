@@ -9,8 +9,8 @@ const WOOCOMMERCE_BASE_URL = 'https://kaaduorganics.com'; // Your WordPress/WooC
 
 // IMPORTANT: For production, store these in Vercel Environment Variables
 // and access them via process.env.CONSUMER_KEY, process.env.CONSUMER_SECRET
-const CONSUMER_KEY = 'ck_YOUR_CONSUMER_KEY'; // Replace with your actual Consumer Key
-const CONSUMER_SECRET = 'cs_YOUR_CONSUMER_SECRET'; // Replace with your actual Consumer Secret
+const CONSUMER_KEY = 'ck_dd8d6bcd7e5c426609d192e8f9088b0cb55b1db4'; // Replace with your actual Consumer Key
+const CONSUMER_SECRET = 'cs_5f2739e4fa312f94e38dd0983da45ce4cd3c2aa1'; // Replace with your actual Consumer Secret
 
 // Basic Authentication Header
 const authHeader = 'Basic ' + btoa(`${CONSUMER_KEY}:${CONSUMER_SECRET}`);
