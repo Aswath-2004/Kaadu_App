@@ -2,8 +2,8 @@
 const axios = require('axios');
 const btoa = require('btoa'); // For Basic Auth encoding
 
-// Your actual WooCommerce domain
-const WOOCOMMERCE_BASE_URL = process.env.WOOCOMMERCE_SITE_URL;
+// Your actual WooCommerce domain, retrieved from environment variables
+const WOOCOMMERCE_BASE_URL = process.env.WOOCOMMERCE_SITE_URL; // Corrected: Reference the environment variable name
 
 // Retrieve Consumer Key and Secret from Vercel Environment Variables
 const CONSUMER_KEY = process.env.WOOCOMMERCE_CONSUMER_KEY;
