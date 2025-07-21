@@ -29,9 +29,9 @@ module.exports = async (req, res) => {
   }
 
   // Extract the path from the incoming request (e.g., /products, /products/categories)
-  // req.url will be something like '/api/products' or '/api/products/categories'
-  // We need to remove the '/api' prefix.
-  const path = req.url.replace('/api', '');
+  // req.url will be something like '/api/proxy/products' or '/api/proxy/products/categories'
+  // We need to remove the '/api/proxy' prefix.
+  const path = req.url.replace('/api/proxy', ''); // <--- FIXED: Changed to replace '/api/proxy'
   console.log(`Extracted API Path: ${path}`);
 
   // Construct the full WooCommerce API URL
