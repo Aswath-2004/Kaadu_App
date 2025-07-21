@@ -6,8 +6,8 @@ const fetch = require('node-fetch'); // For making HTTP requests in Node.js
 // IMPORTANT: Replace with your actual WooCommerce Consumer Key and Secret
 // These should be set as Environment Variables in Vercel for security.
 // For testing, you can hardcode them here, but NEVER do this in production.
-const WOOCOMMERCE_CONSUMER_KEY = process.env.WOOCOMMERCE_CONSUMER_KEY || 'ck_dd8d6bcd7e5c426609d192e8f9088b0cb55b1db4'; // <-- REPLACE THIS
-const WOOCOMMERCE_CONSUMER_SECRET = process.env.WOOCOMMERCE_CONSUMER_SECRET || 'cs_5f2739e4fa312f94e38dd0983da45ce4cd3c2aa1'; // <-- REPLACE THIS
+const WOOCOMMERCE_CONSUMER_KEY = process.env.WOOCOMMERCE_CONSUMER_KEY || 'YOUR_WOOCOMMERCE_CONSUMER_KEY'; // <-- REPLACE THIS
+const WOOCOMMERCE_CONSUMER_SECRET = process.env.WOOCOMMERCE_CONSUMER_SECRET || 'YOUR_WOOCOMMERCE_CONSUMER_SECRET'; // <-- REPLACE THIS
 
 // Your actual WooCommerce base URL
 const WOOCOMMERCE_SITE_URL = 'https://kaaduorganics.com';
@@ -26,8 +26,8 @@ module.exports = async (req, res) => {
   const authString = Buffer.from(`${WOOCOMMERCE_CONSUMER_KEY}:${WOOCOMMERCE_CONSUMER_SECRET}`).toString('base64');
 
   try {
-    // Forward the request to WooCommerce
-    const response = await fetch(targetUrl, {
+    // Forward the request to WooCommerce, explicitly using the imported 'fetch'
+    const response = await fetch(targetUrl, { // <--- FIXED: Using imported 'fetch'
       method: req.method, // Use the same HTTP method as the incoming request (GET, POST, etc.)
       headers: {
         'Authorization': `Basic ${authString}`,
