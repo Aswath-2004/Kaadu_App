@@ -1,62 +1,114 @@
 // api/index.js
 // This is a Vercel Serverless Function acting as a proxy for WooCommerce API.
 
-const fetch = require('node-fetch'); // For making HTTP requests in Node.js
+const axios = require('axios'); // Changed from node-fetch to axios
 
 // IMPORTANT: Replace with your actual WooCommerce Consumer Key and Secret
 // These should be set as Environment Variables in Vercel for security.
-// For testing, you can hardcode them here, but NEVER do this in production.
-const WOOCOMMERCE_CONSUMER_KEY = process.env.WOOCOMMERCE_CONSUMER_KEY || 'ck_dd8d6bcd7e5c426609d192e8f9088b0cb55b1db4'; // <-- REPLACE THIS
-const WOOCOMMERCE_CONSUMER_SECRET = process.env.WOOCOMMERCE_CONSUMER_SECRET || 'cs_5f2739e4fa312f94e38dd0983da45ce4cd3c2aa1'; // <-- REPLACE THIS
+// If not set as environment variables, the default values will be used.
+const WOOCOMMERCE_CONSUMER_KEY = process.env.WOOCOMMERCE_CONSUMER_KEY || 'YOUR_WOOCOMMERCE_CONSUMER_KEY_PLACEHOLDER'; // <-- ENSURE THIS IS REPLACED OR SET IN VERCEL ENV
+const WOOCOMMERCE_CONSUMER_SECRET = process.env.WOOCOMMERCE_CONSUMER_SECRET || 'YOUR_WOOCOMMERCE_CONSUMER_SECRET_PLACEHOLDER'; // <-- ENSURE THIS IS REPLACED OR SET IN VERCEL ENV
 
 // Your actual WooCommerce base URL
 const WOOCOMMERCE_SITE_URL = 'https://kaaduorganics.com';
 
 module.exports = async (req, res) => {
+  console.log('--- Vercel Proxy Function Invoked ---');
+  console.log(`Request Method: ${req.method}`);
+  console.log(`Incoming Request URL: ${req.url}`);
+
+  // Set CORS headers to allow your Flutter app to access this function
+  res.setHeader('Access-Control-Allow-Origin', '*'); // In production, replace '*' with your Flutter app's domain
+  res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+  // Handle preflight OPTIONS requests
+  if (req.method === 'OPTIONS') {
+      res.status(204).end();
+      return;
+  }
+
   // Extract the path from the incoming request (e.g., /products, /products/categories)
   // req.url will be something like '/api/products' or '/api/products/categories'
   // We need to remove the '/api' prefix.
   const path = req.url.replace('/api', '');
+  console.log(`Extracted API Path: ${path}`);
 
   // Construct the full WooCommerce API URL
   // Example: https://kaaduorganics.com/wp-json/wc/v3/products
   const targetUrl = `${WOOCOMMERCE_SITE_URL}/wp-json/wc/v3${path}`;
+  console.log(`Target WooCommerce URL: ${targetUrl}`);
 
-  // Encode Consumer Key and Secret for Basic Authentication
+  // Check if keys are loaded from environment variables or placeholders
+  if (WOOCOMMERCE_CONSUMER_KEY === 'YOUR_WOOCOMMERCE_CONSUMER_KEY_PLACEHOLDER' || WOOCOMMERCE_CONSUMER_SECRET === 'YOUR_WOOCOMMERCE_CONSUMER_SECRET_PLACEHOLDER') {
+    console.error('ERROR: WooCommerce API keys are not set as environment variables in Vercel!');
+    return res.status(500).json({
+      code: 'missing_api_keys',
+      message: 'WooCommerce API keys are not configured on the Vercel server.',
+      details: 'Please set WOOCOMMERCE_CONSUMER_KEY and WOOCOMMERCE_CONSUMER_SECRET as environment variables in your Vercel project settings.'
+    });
+  }
+
+  // Encode Consumer Key and Secret for Basic Authentication using Buffer
   const authString = Buffer.from(`${WOOCOMMERCE_CONSUMER_KEY}:${WOOCOMMERCE_CONSUMER_SECRET}`).toString('base64');
+  console.log(`Auth String (masked): ${authString.substring(0, 10)}...`); // Log masked string for security
 
   try {
-    // Forward the request to WooCommerce, explicitly using the imported 'fetch'
-    const response = await fetch(targetUrl, { // <--- FIXED: Using imported 'fetch'
-      method: req.method, // Use the same HTTP method as the incoming request (GET, POST, etc.)
-      headers: {
+    // Prepare headers for WooCommerce request (Basic Auth)
+    const headers = {
         'Authorization': `Basic ${authString}`,
-        'Content-Type': 'application/json',
-        // Forward other relevant headers if needed, e.g., 'User-Agent'
-      },
-      // For POST, PUT, PATCH requests, include the body
-      body: req.method !== 'GET' && req.method !== 'HEAD' ? JSON.stringify(req.body) : undefined,
-    });
+        'Content-Type': req.headers['content-type'] || 'application/json', // Preserve original or default to JSON
+    };
 
-    // Set the response status code and headers from the WooCommerce response
-    res.status(response.status);
-    response.headers.forEach((value, name) => {
-      // Avoid setting duplicate or problematic headers
-      if (!['transfer-encoding', 'content-encoding', 'content-length'].includes(name.toLowerCase())) {
-        res.setHeader(name, value);
-      }
-    });
+    let wooResponse;
+    const requestConfig = { headers, params: req.query }; // req.query contains URL parameters
 
-    // Send the WooCommerce response body back to the client
-    const data = await response.json(); // Assuming JSON response from WooCommerce
-    res.json(data);
+    // Determine request body for non-GET/HEAD methods
+    let requestBody = req.body; // Axios handles JSON bodies directly if Content-Type is application/json
+
+    if (req.method === 'GET') {
+        wooResponse = await axios.get(targetUrl, requestConfig);
+    } else if (req.method === 'POST') {
+        wooResponse = await axios.post(targetUrl, requestBody, requestConfig);
+    } else if (req.method === 'PUT') {
+        wooResponse = await axios.put(targetUrl, requestBody, requestConfig);
+    } else if (req.method === 'DELETE') {
+        wooResponse = await axios.delete(targetUrl, requestConfig);
+    } else {
+        return res.status(405).json({ error: 'Method Not Allowed' });
+    }
+
+    console.log(`WooCommerce Response Status: ${wooResponse.status}`);
+
+    // Check for non-2xx responses from WooCommerce
+    if (wooResponse.status < 200 || wooResponse.status >= 300) {
+      console.error('WooCommerce API returned an error:', wooResponse.data);
+      return res.status(wooResponse.status).json({
+        code: 'woocommerce_api_error',
+        message: `WooCommerce API responded with status ${wooResponse.status}`,
+        details: wooResponse.data,
+      });
+    }
+
+    // Forward WooCommerce response back to Flutter app
+    console.log('Successfully proxied and returned data.');
+    res.status(wooResponse.status).json(wooResponse.data);
 
   } catch (error) {
-    console.error('Proxy error:', error);
-    res.status(500).json({
-      code: 'proxy_error',
-      message: 'Failed to proxy request to WooCommerce.',
-      details: error.message,
-    });
+    console.error('CRITICAL PROXY ERROR:', error);
+    if (error.response) {
+        // The request was made and the server responded with a status code
+        // that falls out of the range of 2xx
+        console.error('WooCommerce API Error Response (from Axios):', error.response.data);
+        res.status(error.response.status).json(error.response.data);
+    } else if (error.request) {
+        // The request was made but no response was received
+        console.error('No response received from WooCommerce API (from Axios)');
+        res.status(503).json({ error: 'Service Unavailable: No response from WooCommerce API' });
+    } else {
+        // Something happened in setting up the request that triggered an Error
+        console.error('Request setup error:', error.message);
+        res.status(500).json({ error: 'Internal Server Error', details: error.message, stack: error.stack });
+    }
   }
 };
