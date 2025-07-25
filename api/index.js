@@ -28,15 +28,16 @@ module.exports = async (req, res) => {
   }
 
   // Extract the path from the incoming request (e.g., /products, /products/categories)
-  // req.url will be something like '/api/proxy/products' or '/api/proxy/products/categories'
-  // We need to remove the '/api/proxy' prefix.
-  const path = req.url.replace('/api/proxy/', ''); // <--- Ensures correct path extraction
-  console.log(`Extracted API Path: ${path}`);
+  // req.url will be something like '/api/proxy/products' or '/api/proxy/products/categories?someParam=value'
+  // We need to remove the '/api/proxy' prefix AND any query parameters from the path itself.
+  const urlParts = req.url.split('?');
+  const pathWithoutQuery = urlParts[0].replace('/api/proxy/', '');
+  console.log(`Extracted API Path (cleaned): ${pathWithoutQuery}`);
 
-  // Construct the full WooCommerce API URL
-  // Example: https://kaaduorganics.com/wp-json/wc/v3/products
-  const targetUrl = `${WOOCOMMERCE_SITE_URL}/wp-json/wc/v3/${path}`;
-  console.log(`Target WooCommerce URL: ${targetUrl}`);
+  // Construct the full WooCommerce API URL.
+  // We explicitly add req.query as parameters, so they aren't duplicated if already in the path.
+  const targetUrl = `${WOOCOMMERCE_SITE_URL}/wp-json/wc/v3/${pathWithoutQuery}`;
+  console.log(`Target WooCommerce URL (base): ${targetUrl}`);
 
   // Check if keys are loaded from environment variables or placeholders
   if (WOOCOMMERCE_CONSUMER_KEY === 'YOUR_WOOCOMMERCE_CONSUMER_KEY_PLACEHOLDER' || WOOCOMMERCE_CONSUMER_SECRET === 'YOUR_WOOCOMMERCE_CONSUMER_SECRET_PLACEHOLDER') {
@@ -60,7 +61,8 @@ module.exports = async (req, res) => {
     };
 
     let wooResponse;
-    const requestConfig = { headers, params: req.query }; // req.query contains URL parameters
+    // Pass req.query directly as Axios params, it handles encoding
+    const requestConfig = { headers, params: req.query }; 
 
     // Determine request body for non-GET/HEAD methods
     let requestBody = req.body; // Axios handles JSON bodies directly if Content-Type is application/json
@@ -78,7 +80,7 @@ module.exports = async (req, res) => {
     }
 
     console.log(`WooCommerce Response Status: ${wooResponse.status}`);
-    console.log(`WooCommerce Response Data (first 200 chars): ${JSON.stringify(wooResponse.data).substring(0, 200)}...`);
+    console.log(`WooCommerce Response Data (first 500 chars): ${JSON.stringify(wooResponse.data).substring(0, 500)}...`);
 
 
     // Check for non-2xx responses from WooCommerce
