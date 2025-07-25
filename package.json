@@ -11,6 +11,8 @@
   "description": "Vercel proxy for Kaadu Organics WooCommerce API",
   "dependencies": {
     "@woocommerce/woocommerce-rest-api": "^1.0.1",
-    "express": "^4.18.2"
+    "axios": "^1.7.2",
+    "cors": "^2.8.5",
+    "express": "^4.19.2"
   }
 }
